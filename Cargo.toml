@@ -1,0 +1,12 @@
+[package]
+name = "codef"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+crossterm = "0.23.0"
+tui = "0.17.0"
+unicode-width = "0.1.9"
+ignore = "0.4"
