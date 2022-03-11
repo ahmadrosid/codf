@@ -1,7 +1,5 @@
 use std::{io, time::{Instant, Duration}};
-
 use crossterm::event::{self, Event, KeyCode};
-use tokio::task;
 use tui::{backend::Backend, Terminal};
 
 use crate::{document::Document, document::Row, ui::render};
@@ -41,10 +39,6 @@ impl App {
         }
         self.messages = self.doc.search(&self.input).await;
         self.current_time = Instant::now();
-
-        if let Some(top) = self.messages.get_mut(0) {
-            top.raw = format!("{}: duration: {:?}", &top.raw, duration.to_owned().as_millis());
-        }
     }
 
     pub fn move_up(&mut self) {
