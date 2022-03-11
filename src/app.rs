@@ -1,9 +1,10 @@
-use std::io;
+use std::{io, time::{Instant, Duration}};
 
 use crossterm::event::{self, Event, KeyCode};
+use tokio::task;
 use tui::{backend::Backend, Terminal};
 
-use crate::{ui::render, document::Document};
+use crate::{document::Document, document::Row, ui::render};
 
 pub enum InputMode {
     Normal,
@@ -13,8 +14,10 @@ pub enum InputMode {
 pub struct App {
     pub input: String,
     pub input_mode: InputMode,
-    pub messages: Vec<String>,
-    pub doc: Document
+    pub messages: Vec<Row>,
+    pub doc: Document,
+    pub index: usize,
+    current_time: Instant,
 }
 
 impl Default for App {
@@ -23,18 +26,45 @@ impl Default for App {
             input: String::new(),
             input_mode: InputMode::Editing,
             messages: Vec::new(),
-            doc: Document::new()
+            doc: Document::new(),
+            index: 0,
+            current_time: Instant::now(),
         }
     }
 }
 
 impl App {
-    pub fn search(&mut self) {
-        self.messages = self.doc.search(&self.input);
+    pub async fn search(&mut self) {
+        let duration = self.current_time.elapsed();
+        if duration < Duration::from_millis(500) {
+            return;
+        }
+        self.messages = self.doc.search(&self.input).await;
+        self.current_time = Instant::now();
+
+        if let Some(top) = self.messages.get_mut(0) {
+            top.raw = format!("{}: duration: {:?}", &top.raw, duration.to_owned().as_millis());
+        }
+    }
+
+    pub fn move_up(&mut self) {
+        if self.index == 0 {
+            return;
+        }
+        self.index -= 1;
+    }
+
+    pub fn move_down(&mut self) {
+        if self.index == self.messages.len() - 1 {
+            return;
+        }
+        self.index += 1;
     }
 }
 
-pub fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<()> {
+pub async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<()> {
+    app.doc.collect_paths().await;
+    
     loop {
         terminal.draw(|f| render(f, &app))?;
 
@@ -44,22 +74,36 @@ pub fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Resu
                     KeyCode::Char('i') => {
                         app.input_mode = InputMode::Editing;
                     }
-                    KeyCode::Char('q') => {
+                    KeyCode::Char('q') | KeyCode::Esc => {
                         return Ok(());
+                    }
+                    KeyCode::Up => {
+                        app.move_up();
+                    }
+                    KeyCode::Down => {
+                        app.move_down();
                     }
                     _ => {}
                 },
                 InputMode::Editing => match key.code {
                     KeyCode::Enter => {
-                        app.messages.push(app.input.drain(..).collect());
+                        // TODO: open file with default editor
+                    }
+                    KeyCode::Up => {
+                        app.move_up();
+                    }
+                    KeyCode::Down => {
+                        app.move_down();
                     }
                     KeyCode::Char(c) => {
                         app.input.push(c);
-                        app.search();
+                        app.search().await;
+                        app.index = 0;
                     }
                     KeyCode::Backspace => {
                         app.input.pop();
-                        app.search();
+                        app.search().await;
+                        app.index = 0;
                     }
                     KeyCode::Esc => {
                         app.input_mode = InputMode::Normal;

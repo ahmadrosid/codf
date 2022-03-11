@@ -5,6 +5,7 @@ mod ui;
 
 use std::error::Error;
 
-fn main() -> Result<(), Box<dyn Error>> {
-    terminal::run()
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error>> {
+    terminal::run().await
 }

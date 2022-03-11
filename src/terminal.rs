@@ -9,15 +9,14 @@ use crossterm::{
 use std::{error::Error, io};
 use tui::{backend::CrosstermBackend, Terminal};
 
-pub fn run() -> Result<(), Box<dyn Error>> {
+pub async fn run() -> Result<(), Box<dyn Error>> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
-
     let app = App::default();
-    let res = run_app(&mut terminal, app);
+    let res = run_app(&mut terminal, app).await;
 
     disable_raw_mode()?;
     execute!(
@@ -30,6 +29,5 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     if let Err(err) = res {
         println!("{:?}", err)
     }
-
     Ok(())
 }

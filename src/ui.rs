@@ -1,4 +1,7 @@
-use crate::app::{App, InputMode};
+use crate::{
+    app::{App, InputMode},
+    document::Row,
+};
 use tui::{
     backend::Backend,
     layout::{Constraint, Direction, Layout},
@@ -8,6 +11,34 @@ use tui::{
     Frame,
 };
 use unicode_width::UnicodeWidthStr;
+
+fn list_items<'a>(app: &'a App, index: usize, row: &'a Row) -> ListItem<'a> {
+    let mut content: Vec<Span> = vec![];
+    content.push(Span::raw(format!("{}", &row.file_name)));
+    content.push(Span::raw(format!(":{}: ", row.line)));
+    if app.input.is_empty() {
+        content.push(Span::raw(&row.raw));
+    } else {
+        let split = row.raw.split(&app.input).collect::<Vec<_>>();
+        let len = split.len() - 1;
+        for (index, text) in split.iter().enumerate() {
+            content.push(Span::raw(text.to_string()));
+            if index < len {
+                content.push(Span::styled(
+                    &app.input,
+                    Style::default()
+                        .bg(Color::Green)
+                        .fg(Color::Black)
+                        .add_modifier(Modifier::BOLD),
+                ));
+            }
+        }
+    }
+    if index == app.index {
+        return ListItem::new(Spans::from(content)).style(Style::default().bg(Color::Black));
+    }
+    ListItem::new(Spans::from(content))
+}
 
 pub fn render<B: Backend>(f: &mut Frame<B>, app: &App) {
     let chunks = Layout::default()
@@ -38,7 +69,7 @@ pub fn render<B: Backend>(f: &mut Frame<B>, app: &App) {
             vec![
                 Span::raw(" Press "),
                 Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
-                Span::raw(" to stop searching.")
+                Span::raw(" to stop searching."),
             ],
             Style::default().add_modifier(Modifier::DIM),
         ),
@@ -58,10 +89,7 @@ pub fn render<B: Backend>(f: &mut Frame<B>, app: &App) {
     match app.input_mode {
         InputMode::Normal => {}
         InputMode::Editing => {
-            f.set_cursor(
-                chunks[1].x + app.input.width() as u16 + 1,
-                chunks[1].y + 1,
-            )
+            f.set_cursor(chunks[1].x + app.input.width() as u16 + 1, chunks[1].y + 1)
         }
     }
 
@@ -69,10 +97,7 @@ pub fn render<B: Backend>(f: &mut Frame<B>, app: &App) {
         .messages
         .iter()
         .enumerate()
-        .map(|(i, m)| {
-            let content = vec![Spans::from(Span::raw(format!("{}: {}", i, m)))];
-            ListItem::new(content)
-        })
+        .map(|(i, m)| list_items(app, i, m))
         .collect();
     let messages =
         List::new(messages).block(Block::default().borders(Borders::ALL).title("Result"));
