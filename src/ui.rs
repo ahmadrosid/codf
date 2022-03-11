@@ -14,7 +14,11 @@ use unicode_width::UnicodeWidthStr;
 
 fn list_items<'a>(app: &'a App, index: usize, row: &'a Row) -> ListItem<'a> {
     let mut content: Vec<Span> = vec![];
-    content.push(Span::raw(format!("{}", &row.file_name)));
+    let file = Span::styled(
+        format!("{}", row.file_name),
+        Style::default().add_modifier(Modifier::DIM),
+    );
+    content.push(file);
     content.push(Span::raw(format!(":{}: ", row.line)));
     if app.input.is_empty() {
         content.push(Span::raw(&row.raw));
@@ -22,7 +26,7 @@ fn list_items<'a>(app: &'a App, index: usize, row: &'a Row) -> ListItem<'a> {
         let split = row.raw.split(&app.input).collect::<Vec<_>>();
         let len = split.len() - 1;
         for (index, text) in split.iter().enumerate() {
-            content.push(Span::raw(text.to_string()));
+            content.push(Span::raw(*text));
             if index < len {
                 content.push(Span::styled(
                     &app.input,
@@ -89,7 +93,7 @@ pub fn render<B: Backend>(f: &mut Frame<B>, app: &App) {
     match app.input_mode {
         InputMode::Normal => {}
         InputMode::Editing => {
-            f.set_cursor(chunks[1].x + app.input.width() as u16 + 1, chunks[1].y + 1)
+            f.set_cursor(chunks[1].x + app.input.width() as u16 + 1, chunks[1].y + 1);
         }
     }
 

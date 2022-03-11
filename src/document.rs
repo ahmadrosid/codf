@@ -1,4 +1,4 @@
-use fuzzy_matcher::skim::SkimMatcherV2;
+use fuzzy_matcher::clangd::ClangdMatcher;
 use fuzzy_matcher::FuzzyMatcher;
 use ignore::Walk;
 use std::{
@@ -9,7 +9,7 @@ use std::{
 
 pub struct Document {
     pub paths: Vec<PathBuf>,
-    pub matcher: SkimMatcherV2,
+    pub matcher: ClangdMatcher,
 }
 
 #[derive(Clone)]
@@ -23,7 +23,7 @@ impl Document {
     pub fn new() -> Self {
         Self {
             paths: vec![],
-            matcher: SkimMatcherV2::default(),
+            matcher: ClangdMatcher::default(),
         }
     }
 

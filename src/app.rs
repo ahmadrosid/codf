@@ -1,5 +1,8 @@
-use std::{io, time::{Instant, Duration}};
 use crossterm::event::{self, Event, KeyCode};
+use std::{
+    io,
+    time::{Duration, Instant},
+};
 use tui::{backend::Backend, Terminal};
 
 use crate::{document::Document, document::Row, ui::render};
@@ -56,9 +59,9 @@ impl App {
     }
 }
 
-pub async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<()> {
+pub async fn run<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<()> {
     app.doc.collect_paths().await;
-    
+
     loop {
         terminal.draw(|f| render(f, &app))?;
 

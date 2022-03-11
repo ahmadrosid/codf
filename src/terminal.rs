@@ -1,4 +1,4 @@
-use crate::app::run_app;
+use crate::app::run;
 use crate::app::App;
 
 use crossterm::{
@@ -9,14 +9,14 @@ use crossterm::{
 use std::{error::Error, io};
 use tui::{backend::CrosstermBackend, Terminal};
 
-pub async fn run() -> Result<(), Box<dyn Error>> {
+pub async fn process() -> Result<(), Box<dyn Error>> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
     let app = App::default();
-    let res = run_app(&mut terminal, app).await;
+    let res = run(&mut terminal, app).await;
 
     disable_raw_mode()?;
     execute!(
@@ -27,7 +27,7 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
     terminal.show_cursor()?;
 
     if let Err(err) = res {
-        println!("{:?}", err)
+        println!("{:?}", err);
     }
     Ok(())
 }
