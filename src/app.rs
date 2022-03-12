@@ -1,6 +1,5 @@
 use crate::{document::Document, document::Row, ui::render};
 use crossterm::event::{self, Event, KeyCode};
-use std::cmp::{max, min};
 use std::{fs, io::BufRead, io::BufReader};
 use std::{
     io,
