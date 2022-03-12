@@ -1,7 +1,7 @@
 use crossbeam::channel::Sender;
 use fuzzy_matcher::clangd::ClangdMatcher;
 use fuzzy_matcher::FuzzyMatcher;
-use ignore::{WalkBuilder, Walk};
+use ignore::WalkBuilder;
 use std::{
     fs::File,
     io::{BufRead, BufReader},
@@ -34,16 +34,7 @@ impl DirEntry {
 
 impl Document {
     pub fn new() -> Self {
-        // let walk = Walk::new(".");
-        // let mut paths = HashSet::new();
-        // for depth in walk.filter_map(|e| e.ok()) {
-        //     paths.insert(depth.path().to_path_buf());
-        //     if paths.len() == 10 {
-        //         break;
-        //     }
-        // }
-
-        Self {
+       Self {
             paths: HashSet::default(),
             matcher: ClangdMatcher::default(),
         }

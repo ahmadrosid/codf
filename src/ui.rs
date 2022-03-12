@@ -57,7 +57,7 @@ fn list_items<'a>(app: &'a App, index: usize, row: &'a Row) -> ListItem<'a> {
 pub fn render_search_page<B: Backend>(f: &mut Frame<B>, app: &App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .margin(2)
+        .margin(1)
         .constraints(
             [
                 Constraint::Length(1),

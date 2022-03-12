@@ -123,7 +123,7 @@ where
                     },
                     InputMode::OpenFile => match key.code {
                         KeyCode::Esc => {
-                            app.input_mode = InputMode::Normal;
+                            app.input_mode = InputMode::Editing;
                         }
                         _ => {}
                     },
@@ -132,18 +132,5 @@ where
         }
         f(&mut app);
     }
-
-    // let walker = WalkBuilder::new(".").threads(6).build_parallel();
-    // walker.run(|| {
-    //     let tx = tx.clone();
-    //     Box::new(move |result| {
-    //         use ignore::WalkState::*;
-
-    //         tx.send(DirEntry::Y(result.unwrap())).unwrap();
-    //         Continue
-    //     })
-    // });
-
-    // drop(tx);
-    // collect_dirs_thread.join().unwrap();
 }
+
