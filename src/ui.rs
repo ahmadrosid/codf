@@ -15,7 +15,13 @@ use unicode_width::UnicodeWidthStr;
 fn list_items<'a>(app: &'a App, index: usize, row: &'a Row) -> ListItem<'a> {
     let mut content: Vec<Span> = vec![];
     let file = Span::styled(
-        format!("{}", row.file_name),
+        format!("{}", {
+            if row.file_name.len() > 20 {
+                format!("...{}", &row.file_name[row.file_name.len()-20..])
+            } else {
+                row.file_name.to_string()
+            }
+        }),
         Style::default().add_modifier(Modifier::DIM),
     );
     content.push(file);
