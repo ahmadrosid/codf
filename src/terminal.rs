@@ -1,6 +1,5 @@
 use crate::app::run;
 use crate::app::App;
-use crate::document;
 use crate::document::Document;
 use crossbeam::channel::bounded;
 use crossbeam::channel::Receiver;
@@ -25,16 +24,10 @@ fn draw(receiver: Receiver<DirEntry>) -> Result<(), Box<dyn Error>> {
         Ok(entry) => {
             if entry.path().is_file() {
                 app.doc.paths.insert(entry.path().to_path_buf());
+                app.update_total_files();
             }
         }
-        Err(_) => {
-            if app.messages.len() > 1 {
-                return;
-            }
-            let mut value = document::Row::default();
-            value.raw = String::from("Still waiting for paths to be indexed!");
-            app.messages.push(value);
-        }
+        Err(_) => {}
     });
 
     disable_raw_mode()?;

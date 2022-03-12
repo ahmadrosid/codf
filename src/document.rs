@@ -34,23 +34,23 @@ impl DirEntry {
 
 impl Document {
     pub fn new() -> Self {
-        let walk = Walk::new(".");
-        let mut paths = HashSet::new();
-        for depth in walk.filter_map(|e| e.ok()) {
-            paths.insert(depth.path().to_path_buf());
-            if paths.len() == 10 {
-                break;
-            }
-        }
+        // let walk = Walk::new(".");
+        // let mut paths = HashSet::new();
+        // for depth in walk.filter_map(|e| e.ok()) {
+        //     paths.insert(depth.path().to_path_buf());
+        //     if paths.len() == 10 {
+        //         break;
+        //     }
+        // }
 
         Self {
-            paths,
+            paths: HashSet::default(),
             matcher: ClangdMatcher::default(),
         }
     }
 
     pub fn collect_paths(send: &Sender<DirEntry>) {
-        let walker = WalkBuilder::new("./").threads(6).build_parallel();
+        let walker = WalkBuilder::new("./").threads(2).build_parallel();
         walker.run(|| {
             let send = send.clone();
             Box::new(move |result| {

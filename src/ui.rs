@@ -104,7 +104,9 @@ pub fn render<B: Backend>(f: &mut Frame<B>, app: &App) {
         .enumerate()
         .map(|(i, m)| list_items(app, i, m))
         .collect();
+
+    let result_title = format!(" Result: {} from {} files ", app.messages.len(), app.doc.paths.len());
     let messages =
-        List::new(messages).block(Block::default().borders(Borders::ALL).title("Result"));
+        List::new(messages).block(Block::default().borders(Borders::ALL).title(result_title));
     f.render_widget(messages, chunks[2]);
 }

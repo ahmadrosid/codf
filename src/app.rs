@@ -1,5 +1,6 @@
 use crate::{document::Document, document::Row, ui::render};
-use crossterm::event::{self, Event, KeyCode};
+use crossbeam::epoch::Pointable;
+use crossterm::event::{self, Event, KeyCode, KeyEvent};
 use std::{
     io,
     time::{Duration, Instant},
@@ -20,6 +21,7 @@ pub struct App {
     pub messages: Vec<Row>,
     pub doc: Document,
     pub index: usize,
+    pub total_files: usize,
     current_time: Instant,
 }
 
@@ -31,6 +33,7 @@ impl Default for App {
             messages: Vec::new(),
             doc: Document::new(),
             index: 0,
+            total_files: 0,
             current_time: Instant::now(),
         }
     }
@@ -59,65 +62,67 @@ impl App {
         }
         self.index += 1;
     }
+
+    pub fn update_total_files(&mut self) {
+        self.total_files = self.doc.paths.len();
+    }
 }
 
 pub fn run<F, B: Backend>(terminal: &mut Terminal<B>, mut app: App, f: F) -> io::Result<String>
 where
     F: Fn(&mut App)
 {
-    // pub fn run<B: Backend>(
-    //     terminal: &mut Terminal<B>,
-    //     mut app: App,
-    // ) -> io::Result<String> {
+    let timeout = Duration::from_millis(0);
 
     loop {
         terminal.draw(|frame| render(frame, &app))?;
-
-        if let Event::Key(key) = event::read().unwrap() {
-            match app.input_mode {
-                InputMode::Normal => match key.code {
-                    KeyCode::Char('i') => {
-                        app.input_mode = InputMode::Editing;
-                    }
-                    KeyCode::Char('q') | KeyCode::Esc => {
-                        return Ok(String::new());
-                    }
-                    KeyCode::Up => {
-                        app.move_up();
-                    }
-                    KeyCode::Down => {
-                        app.move_down();
-                    }
-                    _ => {}
-                },
-                InputMode::Editing => match key.code {
-                    KeyCode::Enter => {
-                        // TODO: open file with default editor
-                        if let Some(row) = app.messages.get(app.index) {
-                            return Ok(row.file_name.to_string());
+        if crossterm::event::poll(timeout)? {
+            if let Event::Key(key) = event::read()? {
+                match app.input_mode {
+                    InputMode::Normal => match key.code {
+                        KeyCode::Char('i') => {
+                            app.input_mode = InputMode::Editing;
                         }
-                    }
-                    KeyCode::Up => {
-                        app.move_up();
-                    }
-                    KeyCode::Down => {
-                        app.move_down();
-                    }
-                    KeyCode::Char(c) => {
-                        app.input.push(c);
-                        app.search();
-                        app.index = 0;
-                    }
-                    KeyCode::Backspace => {
-                        app.input.pop();
-                        app.search();
-                        app.index = 0;
-                    }
-                    KeyCode::Esc => {
-                        app.input_mode = InputMode::Normal;
-                    }
-                    _ => {}
-                },
+                        KeyCode::Char('q') | KeyCode::Esc => {
+                            return Ok(String::new());
+                        }
+                        KeyCode::Up => {
+                            app.move_up();
+                        }
+                        KeyCode::Down => {
+                            app.move_down();
+                        }
+                        _ => {}
+                    },
+                    InputMode::Editing => match key.code {
+                        KeyCode::Enter => {
+                            // TODO: open file with default editor
+                            if let Some(row) = app.messages.get(app.index) {
+                                return Ok(row.file_name.to_string());
+                            }
+                        }
+                        KeyCode::Up => {
+                            app.move_up();
+                        }
+                        KeyCode::Down => {
+                            app.move_down();
+                        }
+                        KeyCode::Char(c) => {
+                            app.input.push(c);
+                            app.search();
+                            app.index = 0;
+                        }
+                        KeyCode::Backspace => {
+                            app.input.pop();
+                            app.search();
+                            app.index = 0;
+                        }
+                        KeyCode::Esc => {
+                            app.input_mode = InputMode::Normal;
+                        }
+                        _ => {}
+                    },
+                }
             }
         }
         f(&mut app);
