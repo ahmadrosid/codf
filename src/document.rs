@@ -1,43 +1,71 @@
+use crossbeam::channel::Sender;
 use fuzzy_matcher::clangd::ClangdMatcher;
 use fuzzy_matcher::FuzzyMatcher;
-use ignore::Walk;
+use ignore::{WalkBuilder, Walk};
 use std::{
     fs::File,
     io::{BufRead, BufReader},
-    path::PathBuf,
+    path::{Path, PathBuf}, collections::HashSet,
 };
 
 pub struct Document {
-    pub paths: Vec<PathBuf>,
+    pub paths: HashSet<PathBuf>,
     pub matcher: ClangdMatcher,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Row {
     pub line: usize,
     pub raw: String,
     pub file_name: String,
 }
 
+pub enum DirEntry {
+    Message(ignore::DirEntry),
+}
+
+impl DirEntry {
+    pub fn path(&self) -> &Path {
+        match *self {
+            DirEntry::Message(ref entry) => entry.path(),
+        }
+    }
+}
+
 impl Document {
     pub fn new() -> Self {
+        let walk = Walk::new(".");
+        let mut paths = HashSet::new();
+        for depth in walk.filter_map(|e| e.ok()) {
+            paths.insert(depth.path().to_path_buf());
+            if paths.len() == 10 {
+                break;
+            }
+        }
+
         Self {
-            paths: vec![],
+            paths,
             matcher: ClangdMatcher::default(),
         }
     }
 
-    pub async fn collect_paths(&mut self) {
-        let paths = Walk::new("./")
-            .into_iter()
-            .filter_map(|e| e.ok())
-            .filter(|e| e.path().is_file())
-            .map(|e| e.path().to_path_buf())
-            .collect::<Vec<PathBuf>>();
-        self.paths = paths;
+    pub fn collect_paths(send: &Sender<DirEntry>) {
+        let walker = WalkBuilder::new("./").threads(6).build_parallel();
+        walker.run(|| {
+            let send = send.clone();
+            Box::new(move |result| {
+                use ignore::WalkState::{Continue, Quit};
+                if let Ok(entry) = result {
+                    if let Err(_) = send.send(DirEntry::Message(entry)) {
+                        return Quit
+                    }
+                }
+                Continue
+            })
+        });
     }
 
-    pub async fn search(&self, query: &str) -> Vec<Row> {
+    pub fn search(&self, query: &str) -> Vec<Row> {
         let mut result = vec![];
         let max_len: usize = 120;
         let mut total_index: usize = 0;

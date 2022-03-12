@@ -1,5 +1,10 @@
 use crate::app::run;
 use crate::app::App;
+use crate::document;
+use crate::document::Document;
+use crossbeam::channel::bounded;
+use crossbeam::channel::Receiver;
+use crate::document::DirEntry;
 
 use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture},
@@ -9,14 +14,28 @@ use crossterm::{
 use std::{error::Error, io};
 use tui::{backend::CrosstermBackend, Terminal};
 
-pub async fn process() -> Result<(), Box<dyn Error>> {
+fn draw(receiver: Receiver<DirEntry>) -> Result<(), Box<dyn Error>> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
     let app = App::default();
-    let res = run(&mut terminal, app).await;
+    let res = run(&mut terminal, app, |app| match receiver.recv() {
+        Ok(entry) => {
+            if entry.path().is_file() {
+                app.doc.paths.insert(entry.path().to_path_buf());
+            }
+        }
+        Err(_) => {
+            if app.messages.len() > 1 {
+                return;
+            }
+            let mut value = document::Row::default();
+            value.raw = String::from("Still waiting for paths to be indexed!");
+            app.messages.push(value);
+        }
+    });
 
     disable_raw_mode()?;
     execute!(
@@ -26,8 +45,27 @@ pub async fn process() -> Result<(), Box<dyn Error>> {
     )?;
     terminal.show_cursor()?;
 
-    if let Err(err) = res {
-        println!("{:?}", err);
+    match res {
+        Err(err) => {
+            println!("{:?}", err);
+        }
+        Ok(message) => {
+            println!("{}", message);
+        }
     }
+
+    Ok(())
+}
+
+pub fn process() -> Result<(), Box<dyn Error>> {
+    let (sender, receiver) = bounded::<DirEntry>(100);
+    let worker_thread = std::thread::spawn(move || {
+        draw(receiver).unwrap();
+    });
+    Document::collect_paths(&sender);
+    drop(sender);
+    if let Err(_) = worker_thread.join() {
+        println!("Exit!");
+    };
     Ok(())
 }

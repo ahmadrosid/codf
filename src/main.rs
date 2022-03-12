@@ -2,10 +2,10 @@ mod app;
 mod document;
 mod terminal;
 mod ui;
+mod worker;
 
 use std::error::Error;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
-    terminal::process().await
+fn main() -> Result<(), Box<dyn Error>> {
+    terminal::process()
 }

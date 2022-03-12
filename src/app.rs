@@ -1,11 +1,13 @@
+use crate::{document::Document, document::Row, ui::render};
 use crossterm::event::{self, Event, KeyCode};
 use std::{
     io,
     time::{Duration, Instant},
 };
-use tui::{backend::Backend, Terminal};
-
-use crate::{document::Document, document::Row, ui::render};
+use tui::{
+    backend::Backend,
+    Terminal,
+};
 
 pub enum InputMode {
     Normal,
@@ -35,12 +37,12 @@ impl Default for App {
 }
 
 impl App {
-    pub async fn search(&mut self) {
+    pub fn search(&mut self) {
         let duration = self.current_time.elapsed();
         if duration < Duration::from_millis(500) {
             return;
         }
-        self.messages = self.doc.search(&self.input).await;
+        self.messages = self.doc.search(&self.input);
         self.current_time = Instant::now();
     }
 
@@ -59,20 +61,26 @@ impl App {
     }
 }
 
-pub async fn run<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<()> {
-    app.doc.collect_paths().await;
+pub fn run<F, B: Backend>(terminal: &mut Terminal<B>, mut app: App, f: F) -> io::Result<String>
+where
+    F: Fn(&mut App)
+{
+    // pub fn run<B: Backend>(
+    //     terminal: &mut Terminal<B>,
+    //     mut app: App,
+    // ) -> io::Result<String> {
 
     loop {
-        terminal.draw(|f| render(f, &app))?;
+        terminal.draw(|frame| render(frame, &app))?;
 
-        if let Event::Key(key) = event::read()? {
+        if let Event::Key(key) = event::read().unwrap() {
             match app.input_mode {
                 InputMode::Normal => match key.code {
                     KeyCode::Char('i') => {
                         app.input_mode = InputMode::Editing;
                     }
                     KeyCode::Char('q') | KeyCode::Esc => {
-                        return Ok(());
+                        return Ok(String::new());
                     }
                     KeyCode::Up => {
                         app.move_up();
@@ -85,6 +93,9 @@ pub async fn run<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Re
                 InputMode::Editing => match key.code {
                     KeyCode::Enter => {
                         // TODO: open file with default editor
+                        if let Some(row) = app.messages.get(app.index) {
+                            return Ok(row.file_name.to_string());
+                        }
                     }
                     KeyCode::Up => {
                         app.move_up();
@@ -94,12 +105,12 @@ pub async fn run<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Re
                     }
                     KeyCode::Char(c) => {
                         app.input.push(c);
-                        app.search().await;
+                        app.search();
                         app.index = 0;
                     }
                     KeyCode::Backspace => {
                         app.input.pop();
-                        app.search().await;
+                        app.search();
                         app.index = 0;
                     }
                     KeyCode::Esc => {
@@ -109,5 +120,20 @@ pub async fn run<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Re
                 },
             }
         }
+        f(&mut app);
     }
+
+    // let walker = WalkBuilder::new(".").threads(6).build_parallel();
+    // walker.run(|| {
+    //     let tx = tx.clone();
+    //     Box::new(move |result| {
+    //         use ignore::WalkState::*;
+
+    //         tx.send(DirEntry::Y(result.unwrap())).unwrap();
+    //         Continue
+    //     })
+    // });
+
+    // drop(tx);
+    // collect_dirs_thread.join().unwrap();
 }

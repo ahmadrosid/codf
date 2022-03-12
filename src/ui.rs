@@ -39,7 +39,8 @@ fn list_items<'a>(app: &'a App, index: usize, row: &'a Row) -> ListItem<'a> {
         }
     }
     if index == app.index {
-        return ListItem::new(Spans::from(content)).style(Style::default().bg(Color::Black));
+        return ListItem::new(Spans::from(content))
+            .style(Style::default().add_modifier(Modifier::REVERSED));
     }
     ListItem::new(Spans::from(content))
 }
