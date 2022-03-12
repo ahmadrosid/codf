@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use crate::{
     app::{App, InputMode},
     document::Row,
@@ -51,7 +53,8 @@ fn list_items<'a>(app: &'a App, index: usize, row: &'a Row) -> ListItem<'a> {
     ListItem::new(Spans::from(content))
 }
 
-pub fn render<B: Backend>(f: &mut Frame<B>, app: &App) {
+
+pub fn render_search_page<B: Backend>(f: &mut Frame<B>, app: &App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(2)
@@ -84,6 +87,14 @@ pub fn render<B: Backend>(f: &mut Frame<B>, app: &App) {
             ],
             Style::default().add_modifier(Modifier::DIM),
         ),
+        InputMode::OpenFile => (
+            vec![
+                Span::raw(" Press "),
+                Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(" to stop searching."),
+            ],
+            Style::default().add_modifier(Modifier::DIM),
+        ),
     };
     let mut text = Text::from(Spans::from(msg));
     text.patch_style(style);
@@ -93,12 +104,14 @@ pub fn render<B: Backend>(f: &mut Frame<B>, app: &App) {
     let input = Paragraph::new(app.input.as_ref())
         .style(match app.input_mode {
             InputMode::Normal => Style::default(),
+            InputMode::OpenFile => Style::default(),
             InputMode::Editing => Style::default().fg(Color::Yellow),
         })
         .block(Block::default().borders(Borders::ALL).title("Query"));
     f.render_widget(input, chunks[1]);
     match app.input_mode {
         InputMode::Normal => {}
+        InputMode::OpenFile => {}
         InputMode::Editing => {
             f.set_cursor(chunks[1].x + app.input.width() as u16 + 1, chunks[1].y + 1);
         }
@@ -115,4 +128,55 @@ pub fn render<B: Backend>(f: &mut Frame<B>, app: &App) {
     let messages =
         List::new(messages).block(Block::default().borders(Borders::ALL).title(result_title));
     f.render_widget(messages, chunks[2]);
+}
+
+pub fn render_open_page<B: Backend>(f: &mut Frame<B>, app: &App) {
+    let size = f.size();
+
+    let block = Block::default().style(Style::default());
+    f.render_widget(block, size);
+
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .margin(1)
+        .constraints(
+            [
+                Constraint::Percentage(100),
+            ]
+            .as_ref(),
+        )
+        .split(size);
+    let row = app.messages.get(app.index).unwrap();
+
+    let text = vec![
+        Spans::from(Span::styled(
+            {
+                row.file_name.to_string()
+            },
+            Style::default().fg(Color::Red),
+        )),
+    ];
+
+    let create_block = |title| {
+        Block::default()
+            .borders(Borders::ALL)
+            .style(Style::default())
+            .title(Span::styled(
+                title,
+                Style::default().add_modifier(Modifier::BOLD),
+            ))
+    };
+
+    let name = Path::new(&row.file_name).file_name().unwrap();
+    let paragraph = Paragraph::new(text.clone())
+        .style(Style::default())
+        .block(create_block(format!(" {} ", name.to_string_lossy())));
+    f.render_widget(paragraph, chunks[0]);
+}
+
+pub fn render<B: Backend>(f: &mut Frame<B>, app: &App) {
+    match app.input_mode {
+        InputMode::Editing | InputMode::Normal => render_search_page(f, app),
+        InputMode::OpenFile => render_open_page(f, app)
+    }
 }

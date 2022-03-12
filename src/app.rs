@@ -1,6 +1,5 @@
 use crate::{document::Document, document::Row, ui::render};
-use crossbeam::epoch::Pointable;
-use crossterm::event::{self, Event, KeyCode, KeyEvent};
+use crossterm::event::{self, Event, KeyCode};
 use std::{
     io,
     time::{Duration, Instant},
@@ -13,6 +12,7 @@ use tui::{
 pub enum InputMode {
     Normal,
     Editing,
+    OpenFile,
 }
 
 pub struct App {
@@ -96,9 +96,8 @@ where
                     },
                     InputMode::Editing => match key.code {
                         KeyCode::Enter => {
-                            // TODO: open file with default editor
-                            if let Some(row) = app.messages.get(app.index) {
-                                return Ok(row.file_name.to_string());
+                            if let Some(_) = app.messages.get(app.index) {
+                                app.input_mode = InputMode::OpenFile;
                             }
                         }
                         KeyCode::Up => {
@@ -117,6 +116,12 @@ where
                             app.search();
                             app.index = 0;
                         }
+                        KeyCode::Esc => {
+                            app.input_mode = InputMode::Normal;
+                        }
+                        _ => {}
+                    },
+                    InputMode::OpenFile => match key.code {
                         KeyCode::Esc => {
                             app.input_mode = InputMode::Normal;
                         }
