@@ -3,9 +3,10 @@ use fuzzy_matcher::clangd::ClangdMatcher;
 use fuzzy_matcher::FuzzyMatcher;
 use ignore::WalkBuilder;
 use std::{
+    collections::HashSet,
     fs::File,
     io::{BufRead, BufReader},
-    path::{Path, PathBuf}, collections::HashSet,
+    path::{Path, PathBuf},
 };
 
 pub struct Document {
@@ -34,7 +35,7 @@ impl DirEntry {
 
 impl Document {
     pub fn new() -> Self {
-       Self {
+        Self {
             paths: HashSet::default(),
             matcher: ClangdMatcher::default(),
         }
@@ -48,7 +49,7 @@ impl Document {
                 use ignore::WalkState::{Continue, Quit};
                 if let Ok(entry) = result {
                     if let Err(_) = send.send(DirEntry::Message(entry)) {
-                        return Quit
+                        return Quit;
                     }
                 }
                 Continue

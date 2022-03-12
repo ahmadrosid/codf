@@ -9,7 +9,7 @@ use tui::{
     layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     text::{Span, Spans, Text},
-    widgets::{Block, Borders, List, ListItem, Paragraph},
+    widgets::{Block, Borders, List, ListItem, Paragraph, Wrap},
     Frame,
 };
 use unicode_width::UnicodeWidthStr;
@@ -19,7 +19,7 @@ fn list_items<'a>(app: &'a App, index: usize, row: &'a Row) -> ListItem<'a> {
     let file = Span::styled(
         format!("{}", {
             if row.file_name.len() > 20 {
-                format!("...{}", &row.file_name[row.file_name.len()-20..])
+                format!("...{}", &row.file_name[row.file_name.len() - 20..])
             } else {
                 row.file_name.to_string()
             }
@@ -52,7 +52,6 @@ fn list_items<'a>(app: &'a App, index: usize, row: &'a Row) -> ListItem<'a> {
     }
     ListItem::new(Spans::from(content))
 }
-
 
 pub fn render_search_page<B: Backend>(f: &mut Frame<B>, app: &App) {
     let chunks = Layout::default()
@@ -124,7 +123,11 @@ pub fn render_search_page<B: Backend>(f: &mut Frame<B>, app: &App) {
         .map(|(i, m)| list_items(app, i, m))
         .collect();
 
-    let result_title = format!(" Result: {} from {} files ", app.messages.len(), app.doc.paths.len());
+    let result_title = format!(
+        " Result: {} from {} files ",
+        app.messages.len(),
+        app.doc.paths.len()
+    );
     let messages =
         List::new(messages).block(Block::default().borders(Borders::ALL).title(result_title));
     f.render_widget(messages, chunks[2]);
@@ -139,23 +142,29 @@ pub fn render_open_page<B: Backend>(f: &mut Frame<B>, app: &App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(1)
-        .constraints(
-            [
-                Constraint::Percentage(100),
-            ]
-            .as_ref(),
-        )
+        .constraints([Constraint::Percentage(100)].as_ref())
         .split(size);
     let row = app.messages.get(app.index).unwrap();
 
-    let text = vec![
-        Spans::from(Span::styled(
-            {
-                row.file_name.to_string()
-            },
-            Style::default().fg(Color::Red),
-        )),
-    ];
+    let mut text = vec![];
+    let mut num = 0;
+    for line in &app.file_contents {
+        num += 1;
+        text.push(Spans::from(
+            vec![
+                Span::styled({
+                    if num < 10 {
+                        format!("{}   ", num)
+                    } else if num < 100 {
+                        format!("{}  ", num)
+                    } else {
+                        format!("{} ", num)
+                    }
+                }, Style::default().add_modifier(Modifier::DIM)),
+                Span::styled(line, Style::default())
+            ]
+        ));
+    }
 
     let create_block = |title| {
         Block::default()
@@ -170,13 +179,16 @@ pub fn render_open_page<B: Backend>(f: &mut Frame<B>, app: &App) {
     let name = Path::new(&row.file_name).file_name().unwrap();
     let paragraph = Paragraph::new(text.clone())
         .style(Style::default())
-        .block(create_block(format!(" {} ", name.to_string_lossy())));
+        .block(create_block(format!(" {} ", name.to_string_lossy())))
+        .wrap(Wrap { trim: false })
+        .scroll((app.scroll.y + 1, app.scroll.x + 1));
+
     f.render_widget(paragraph, chunks[0]);
 }
 
 pub fn render<B: Backend>(f: &mut Frame<B>, app: &App) {
     match app.input_mode {
         InputMode::Editing | InputMode::Normal => render_search_page(f, app),
-        InputMode::OpenFile => render_open_page(f, app)
+        InputMode::OpenFile => render_open_page(f, app),
     }
 }

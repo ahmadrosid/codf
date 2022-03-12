@@ -1,9 +1,9 @@
 use crate::app::run;
 use crate::app::App;
+use crate::document::DirEntry;
 use crate::document::Document;
 use crossbeam::channel::bounded;
 use crossbeam::channel::Receiver;
-use crate::document::DirEntry;
 
 use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture},
