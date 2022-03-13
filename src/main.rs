@@ -1,8 +1,10 @@
 mod app;
 mod document;
+mod indexer;
 mod terminal;
 mod ui;
 
 fn main() {
-    terminal::process();
+    indexer::index().unwrap();
+    // terminal::process();
 }

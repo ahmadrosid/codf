@@ -13,3 +13,5 @@ ignore = "0.4"
 fuzzy-matcher = "0.3.7"
 tokio = { version = "1.17.0", features = ["full"] }
 crossbeam = "0.8.1"
+tantivy = "0.17.0"
+tempfile = "3.3.0"
