@@ -52,12 +52,12 @@ fn draw(receiver: Receiver<DirEntry>) -> Result<(), Box<dyn Error>> {
 
 pub fn process() -> Result<(), Box<dyn Error>> {
     let (sender, receiver) = bounded::<DirEntry>(100);
-    let worker_thread = std::thread::spawn(move || {
+    let ui_thread = std::thread::spawn(move || {
         draw(receiver).unwrap();
     });
     Document::collect_paths(&sender);
     drop(sender);
-    if let Err(_) = worker_thread.join() {
+    if let Err(_) = ui_thread.join() {
         println!("Exit!");
     };
     Ok(())
