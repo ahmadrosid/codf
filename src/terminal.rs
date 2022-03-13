@@ -13,21 +13,20 @@ use crossterm::{
 use std::{error::Error, io};
 use tui::{backend::CrosstermBackend, Terminal};
 
-fn draw(receiver: Receiver<DirEntry>) -> Result<(), Box<dyn Error>> {
+fn draw(receiver: &Receiver<DirEntry>) -> Result<(), Box<dyn Error>> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
     let app = App::default();
-    let res = run(&mut terminal, app, |app| match receiver.recv() {
-        Ok(entry) => {
+    let res = run(&mut terminal, app, |app| {
+        if let Ok(entry) = receiver.recv() {
             if entry.path().is_file() {
                 app.doc.paths.insert(entry.path().to_path_buf());
                 app.update_total_files();
             }
         }
-        Err(_) => {}
     });
 
     disable_raw_mode()?;
@@ -50,15 +49,14 @@ fn draw(receiver: Receiver<DirEntry>) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-pub fn process() -> Result<(), Box<dyn Error>> {
+pub fn process() {
     let (sender, receiver) = bounded::<DirEntry>(100);
     let ui_thread = std::thread::spawn(move || {
-        draw(receiver).unwrap();
+        draw(&receiver).unwrap();
     });
     Document::collect_paths(&sender);
     drop(sender);
-    if let Err(_) = ui_thread.join() {
+    if ui_thread.join().is_err() {
         println!("Exit!");
     };
-    Ok(())
 }

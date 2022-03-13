@@ -74,25 +74,28 @@ impl App {
     pub fn update_scroll(&mut self, key: KeyCode) {
         match key {
             KeyCode::Down | KeyCode::Char('j') => {
-                if self.scroll.y >= self.file_contents.len() as u16 - 1{
+                if self.scroll.y >= self.file_contents.len() as u16 - 1 {
                     return;
                 }
-                self.scroll.y = self.scroll.y + 1;
+                self.scroll.y += 1;
             }
             KeyCode::Up | KeyCode::Char('k') => {
                 if self.scroll.y == 0 {
                     return;
                 }
-                self.scroll.y = self.scroll.y - 1;
+                self.scroll.y -= 1;
             }
             KeyCode::Right => {
-                self.scroll.x = max(
-                    self.scroll.x + 1,
-                    self.file_contents
-                        .get(self.scroll.y as usize)
-                        .unwrap_or(&"".into())
-                        .len() as u16,
-                )
+                let max_x = self
+                    .file_contents
+                    .get(self.scroll.y as usize)
+                    .unwrap_or(&"".into())
+                    .len() as u16;
+                if self.scroll.x >= max_x - 1 {
+                    return;
+                }
+
+                self.scroll.x += 1;
             }
             KeyCode::Left => {
                 if self.scroll.x == 0 {
@@ -160,7 +163,7 @@ where
                     },
                     InputMode::Editing => match key.code {
                         KeyCode::Enter => {
-                            if let Some(_) = app.open_file() {
+                            if app.open_file().is_some() {
                                 app.input_mode = InputMode::OpenFile;
                             }
                         }
@@ -194,8 +197,7 @@ where
                         | KeyCode::Down
                         | KeyCode::Left
                         | KeyCode::Right
-                        | KeyCode::Char('j')
-                        | KeyCode::Char('k') => app.update_scroll(key.code),
+                        | KeyCode::Char('j' | 'k') => app.update_scroll(key.code),
                         _ => {}
                     },
                 }

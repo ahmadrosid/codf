@@ -17,13 +17,13 @@ use unicode_width::UnicodeWidthStr;
 fn list_items<'a>(app: &'a App, index: usize, row: &'a Row) -> ListItem<'a> {
     let mut content: Vec<Span> = vec![];
     let file = Span::styled(
-        format!("{}", {
+        {
             if row.file_name.len() > 20 {
                 format!("...{}", &row.file_name[row.file_name.len() - 20..])
             } else {
                 row.file_name.to_string()
             }
-        }),
+        },
         Style::default().add_modifier(Modifier::DIM),
     );
     content.push(file);
@@ -78,15 +78,7 @@ pub fn render_search_page<B: Backend>(f: &mut Frame<B>, app: &App) {
             ],
             Style::default().add_modifier(Modifier::DIM),
         ),
-        InputMode::Editing => (
-            vec![
-                Span::raw(" Press "),
-                Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
-                Span::raw(" to stop searching."),
-            ],
-            Style::default().add_modifier(Modifier::DIM),
-        ),
-        InputMode::OpenFile => (
+        InputMode::Editing | InputMode::OpenFile => (
             vec![
                 Span::raw(" Press "),
                 Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
@@ -102,18 +94,13 @@ pub fn render_search_page<B: Backend>(f: &mut Frame<B>, app: &App) {
 
     let input = Paragraph::new(app.input.as_ref())
         .style(match app.input_mode {
-            InputMode::Normal => Style::default(),
-            InputMode::OpenFile => Style::default(),
+            InputMode::Normal | InputMode::OpenFile => Style::default(),
             InputMode::Editing => Style::default().fg(Color::Yellow),
         })
         .block(Block::default().borders(Borders::ALL).title("Query"));
     f.render_widget(input, chunks[1]);
-    match app.input_mode {
-        InputMode::Normal => {}
-        InputMode::OpenFile => {}
-        InputMode::Editing => {
-            f.set_cursor(chunks[1].x + app.input.width() as u16 + 1, chunks[1].y + 1);
-        }
+    if let InputMode::Editing = app.input_mode {
+        f.set_cursor(chunks[1].x + app.input.width() as u16 + 1, chunks[1].y + 1);
     }
 
     let messages: Vec<ListItem> = app
@@ -150,9 +137,9 @@ pub fn render_open_page<B: Backend>(f: &mut Frame<B>, app: &App) {
     let mut num = 0;
     for line in &app.file_contents {
         num += 1;
-        text.push(Spans::from(
-            vec![
-                Span::styled({
+        text.push(Spans::from(vec![
+            Span::styled(
+                {
                     if num < 10 {
                         format!("{}   ", num)
                     } else if num < 100 {
@@ -160,10 +147,11 @@ pub fn render_open_page<B: Backend>(f: &mut Frame<B>, app: &App) {
                     } else {
                         format!("{} ", num)
                     }
-                }, Style::default().add_modifier(Modifier::DIM)),
-                Span::styled(line, Style::default())
-            ]
-        ));
+                },
+                Style::default().add_modifier(Modifier::DIM),
+            ),
+            Span::styled(line, Style::default()),
+        ]));
     }
 
     let create_block = |title| {

@@ -48,7 +48,7 @@ impl Document {
             Box::new(move |result| {
                 use ignore::WalkState::{Continue, Quit};
                 if let Ok(entry) = result {
-                    if let Err(_) = send.send(DirEntry::Message(entry)) {
+                    if send.send(DirEntry::Message(entry)).is_err() {
                         return Quit;
                     }
                 }
