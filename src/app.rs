@@ -80,7 +80,7 @@ impl App {
                 self.scroll.y += 1;
             }
             KeyCode::Up | KeyCode::Char('k') => {
-                if self.scroll.y == 0 {
+                if self.scroll.y == 1 {
                     return;
                 }
                 self.scroll.y -= 1;
@@ -98,7 +98,7 @@ impl App {
                 self.scroll.x += 1;
             }
             KeyCode::Left => {
-                if self.scroll.x == 0 {
+                if self.scroll.x == 1 {
                     return;
                 }
                 self.scroll.x -= 1;
@@ -112,9 +112,10 @@ impl App {
     }
 
     pub fn open_file(&mut self) -> Option<()> {
-        let raw = self.messages.get(self.index)?;
+        let row = self.messages.get(self.index)?;
+        self.scroll.y = if row.line > 7 { row.line - 6 } else { 1 } as u16;
 
-        let file = fs::File::open(&raw.file_name);
+        let file = fs::File::open(&row.file_name);
         if let Ok(file) = file {
             let mut reader = BufReader::new(file);
             loop {
@@ -135,7 +136,7 @@ impl App {
     }
 }
 
-pub fn run<F, B: Backend>(terminal: &mut Terminal<B>, mut app: App, f: F) -> io::Result<String>
+pub fn run<F, B: Backend>(terminal: &mut Terminal<B>, mut app: App, f: F) -> io::Result<()>
 where
     F: Fn(&mut App),
 {
@@ -151,7 +152,7 @@ where
                             app.input_mode = InputMode::Editing;
                         }
                         KeyCode::Char('q') | KeyCode::Esc => {
-                            return Ok(String::new());
+                            return Ok(());
                         }
                         KeyCode::Up => {
                             app.move_up();
@@ -189,7 +190,7 @@ where
                         _ => {}
                     },
                     InputMode::OpenFile => match key.code {
-                        KeyCode::Esc => {
+                        KeyCode::Char('q') | KeyCode::Esc => {
                             app.input_mode = InputMode::Editing;
                             app.file_contents = vec![];
                         }

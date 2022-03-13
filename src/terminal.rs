@@ -37,13 +37,8 @@ fn draw(receiver: &Receiver<DirEntry>) -> Result<(), Box<dyn Error>> {
     )?;
     terminal.show_cursor()?;
 
-    match res {
-        Err(err) => {
-            println!("{:?}", err);
-        }
-        Ok(message) => {
-            println!("{}", message);
-        }
+    if let Err(err) = res {
+        println!("{:?}", err);
     }
 
     Ok(())

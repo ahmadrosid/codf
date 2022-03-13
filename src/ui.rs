@@ -150,7 +150,13 @@ pub fn render_open_page<B: Backend>(f: &mut Frame<B>, app: &App) {
                 },
                 Style::default().add_modifier(Modifier::DIM),
             ),
-            Span::styled(line, Style::default()),
+            Span::styled(line, {
+                if num == row.line {
+                    Style::default().fg(Color::Green)
+                } else {
+                    Style::default()
+                }
+            }),
         ]));
     }
 
@@ -164,13 +170,22 @@ pub fn render_open_page<B: Backend>(f: &mut Frame<B>, app: &App) {
             ))
     };
 
+    let offset = (
+        {
+            if app.scroll.y >= chunks[0].y {
+                app.scroll.y - chunks[0].y
+            } else {
+                app.scroll.y
+            }
+        },
+        app.scroll.x + 1,
+    );
     let name = Path::new(&row.file_name).file_name().unwrap();
     let paragraph = Paragraph::new(text.clone())
         .style(Style::default())
         .block(create_block(format!(" {} ", name.to_string_lossy())))
         .wrap(Wrap { trim: false })
-        .scroll((app.scroll.y + 1, app.scroll.x + 1));
-
+        .scroll(offset);
     f.render_widget(paragraph, chunks[0]);
 }
 
