@@ -128,7 +128,7 @@ impl Document {
                 }
 
                 if !result.contents.is_empty() {
-                    // result.contents.sort_by(|a, b| a.score.cmp(&b.score));
+                    result.contents.sort_by(|a, b| a.score.cmp(&b.score));
                     results.push(result);
                 }
             }
