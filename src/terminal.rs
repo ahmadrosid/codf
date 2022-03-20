@@ -1,7 +1,7 @@
-use crate::app::run;
 use crate::app::App;
 use crate::document::DirEntry;
 use crate::document::Document;
+use crate::input::watch;
 use crossbeam::channel::bounded;
 use crossbeam::channel::Receiver;
 
@@ -20,7 +20,7 @@ fn draw(receiver: &Receiver<DirEntry>) -> Result<(), Box<dyn Error>> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
     let app = App::default();
-    let res = run(&mut terminal, app, |app| {
+    let res = watch(&mut terminal, app, |app| {
         if let Ok(entry) = receiver.recv() {
             if entry.path().is_file() {
                 app.doc.paths.insert(entry.path().to_path_buf());

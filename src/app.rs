@@ -1,4 +1,4 @@
-use crate::{document::Document, document::Row, ui::render};
+use crate::{document::DocResult, document::Document, ui::render};
 use crossterm::event::{self, Event, KeyCode};
 use std::{fs, io::BufRead, io::BufReader};
 use std::{
@@ -22,7 +22,7 @@ pub struct Scroll {
 pub struct App {
     pub input: String,
     pub input_mode: InputMode,
-    pub messages: Vec<Row>,
+    pub messages: Vec<DocResult>,
     pub doc: Document,
     pub index: usize,
     pub total_files: usize,
@@ -113,9 +113,13 @@ impl App {
 
     pub fn open_file(&mut self) -> Option<()> {
         let row = self.messages.get(self.index)?;
-        self.scroll.y = if row.line > 7 { row.line - 6 } else { 1 } as u16;
+        self.scroll.y = if row.contents[0].line > 7 {
+            row.contents[0].line - 6
+        } else {
+            1
+        } as u16;
 
-        let file = fs::File::open(&row.file_name);
+        let file = fs::File::open(&row.path);
         if let Ok(file) = file {
             let mut reader = BufReader::new(file);
             loop {
@@ -125,6 +129,7 @@ impl App {
                         if line.is_empty() {
                             break;
                         }
+                        line = line.replace("\t", "    ");
                         self.file_contents.push(line);
                     }
                     _ => break,
@@ -133,77 +138,5 @@ impl App {
             return Some(());
         }
         None
-    }
-}
-
-pub fn run<F, B: Backend>(terminal: &mut Terminal<B>, mut app: App, f: F) -> io::Result<()>
-where
-    F: Fn(&mut App),
-{
-    let timeout = Duration::from_millis(0);
-
-    loop {
-        terminal.draw(|frame| render(frame, &app))?;
-        if crossterm::event::poll(timeout)? {
-            if let Event::Key(key) = event::read()? {
-                match app.input_mode {
-                    InputMode::Normal => match key.code {
-                        KeyCode::Char('i') => {
-                            app.input_mode = InputMode::Editing;
-                        }
-                        KeyCode::Char('q') | KeyCode::Esc => {
-                            return Ok(());
-                        }
-                        KeyCode::Up => {
-                            app.move_up();
-                        }
-                        KeyCode::Down => {
-                            app.move_down();
-                        }
-                        _ => {}
-                    },
-                    InputMode::Editing => match key.code {
-                        KeyCode::Enter => {
-                            if app.open_file().is_some() {
-                                app.input_mode = InputMode::OpenFile;
-                            }
-                        }
-                        KeyCode::Up => {
-                            app.move_up();
-                        }
-                        KeyCode::Down => {
-                            app.move_down();
-                        }
-                        KeyCode::Char(c) => {
-                            app.input.push(c);
-                            app.search();
-                            app.index = 0;
-                        }
-                        KeyCode::Backspace => {
-                            app.input.pop();
-                            app.search();
-                            app.index = 0;
-                        }
-                        KeyCode::Esc => {
-                            app.input_mode = InputMode::Normal;
-                        }
-                        _ => {}
-                    },
-                    InputMode::OpenFile => match key.code {
-                        KeyCode::Char('q') | KeyCode::Esc => {
-                            app.input_mode = InputMode::Editing;
-                            app.file_contents = vec![];
-                        }
-                        KeyCode::Up
-                        | KeyCode::Down
-                        | KeyCode::Left
-                        | KeyCode::Right
-                        | KeyCode::Char('j' | 'k') => app.update_scroll(key.code),
-                        _ => {}
-                    },
-                }
-            }
-        }
-        f(&mut app);
     }
 }

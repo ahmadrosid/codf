@@ -9,6 +9,11 @@ use std::{
     path::{Path, PathBuf},
 };
 
+#[cfg(not(feature = "compact"))]
+type ScoreType = i64;
+#[cfg(feature = "compact")]
+type ScoreType = i32;
+
 pub struct Document {
     pub paths: HashSet<PathBuf>,
     pub matcher: ClangdMatcher,
@@ -18,11 +23,31 @@ pub struct Document {
 pub struct Row {
     pub line: usize,
     pub raw: String,
+    pub score: ScoreType
+}
+
+pub struct DocResult {
+    pub path: PathBuf,
     pub file_name: String,
+    pub contents: Vec<Row>,
 }
 
 pub enum DirEntry {
     Message(ignore::DirEntry),
+}
+
+impl DocResult {
+    pub fn new(file_path: &PathBuf) -> Self {
+        Self {
+            path: file_path.clone(),
+            file_name: file_path.file_name().unwrap().to_string_lossy().to_string(),
+            contents: vec![],
+        }
+    }
+
+    pub fn push(&mut self, row: Row) {
+        self.contents.push(row);
+    }
 }
 
 impl DirEntry {
@@ -57,16 +82,21 @@ impl Document {
         });
     }
 
-    pub fn search(&self, query: &str) -> Vec<Row> {
-        let mut result = vec![];
-        let max_len: usize = 120;
-        let mut total_index: usize = 0;
+    pub fn search(&self, query: &str) -> Vec<DocResult> {
+        let mut results: Vec<DocResult> = vec![];
+        let max_file = 120;
+        let mut count_file = 0;
         for path in &self.paths {
-            if total_index > max_len {
+            count_file += 1;
+            if count_file > max_file {
                 break;
             }
 
+            let mut result = DocResult::new(path);
             let file = File::open(path);
+
+            let max_line: usize = 20;
+            let mut current_line: usize = 0;
             if let Ok(file) = file {
                 let mut reader = BufReader::new(file);
                 let mut index = 0;
@@ -79,16 +109,16 @@ impl Document {
                                 break;
                             }
 
-                            if let Some((_, _)) = self.matcher.fuzzy_indices(&line, query) {
+                            if let Some((score, _)) = self.matcher.fuzzy_indices(&line, query) {
                                 let row = Row {
                                     line: index,
-                                    file_name: path.to_str().unwrap().to_string(),
                                     raw: line,
+                                    score
                                 };
                                 result.push(row);
 
-                                total_index += 1;
-                                if total_index > max_len {
+                                current_line += 1;
+                                if current_line > max_line {
                                     break;
                                 }
                             }
@@ -96,8 +126,13 @@ impl Document {
                         _ => break,
                     };
                 }
+
+                if !result.contents.is_empty() {
+                    // result.contents.sort_by(|a, b| a.score.cmp(&b.score));
+                    results.push(result);
+                }
             }
         }
-        result
+        results
     }
 }

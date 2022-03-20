@@ -2,7 +2,7 @@ use std::path::Path;
 
 use crate::{
     app::{App, InputMode},
-    document::Row,
+    document::DocResult,
 };
 use tui::{
     backend::Backend,
@@ -14,24 +14,25 @@ use tui::{
 };
 use unicode_width::UnicodeWidthStr;
 
-fn list_items<'a>(app: &'a App, index: usize, row: &'a Row) -> ListItem<'a> {
+fn list_items<'a>(app: &'a App, index: usize, row: &'a DocResult) -> ListItem<'a> {
     let mut content: Vec<Span> = vec![];
     let file = Span::styled(
         {
+            let line = row.contents[0].line;
             if row.file_name.len() > 20 {
-                format!("...{}", &row.file_name[row.file_name.len() - 20..])
+                format!("...{}:{}", &row.file_name[row.file_name.len() - 20..], line)
             } else {
-                row.file_name.to_string()
+                format!("{}:{}: ", row.file_name, line)
             }
         },
         Style::default().add_modifier(Modifier::DIM),
     );
     content.push(file);
-    content.push(Span::raw(format!(":{}: ", row.line)));
+
     if app.input.is_empty() {
-        content.push(Span::raw(&row.raw));
+        content.push(Span::raw(&row.contents[0].raw));
     } else {
-        let split = row.raw.split(&app.input).collect::<Vec<_>>();
+        let split = row.contents[0].raw.split(&app.input).collect::<Vec<_>>();
         let len = split.len() - 1;
         for (index, text) in split.iter().enumerate() {
             content.push(Span::raw(*text));
@@ -46,10 +47,12 @@ fn list_items<'a>(app: &'a App, index: usize, row: &'a Row) -> ListItem<'a> {
             }
         }
     }
+
     if index == app.index {
         return ListItem::new(Spans::from(content))
             .style(Style::default().add_modifier(Modifier::REVERSED));
     }
+
     ListItem::new(Spans::from(content))
 }
 
@@ -106,6 +109,7 @@ pub fn render_search_page<B: Backend>(f: &mut Frame<B>, app: &App) {
     let messages: Vec<ListItem> = app
         .messages
         .iter()
+        .filter(|raw| raw.contents.len() > 0)
         .enumerate()
         .map(|(i, m)| list_items(app, i, m))
         .collect();
@@ -151,7 +155,7 @@ pub fn render_open_page<B: Backend>(f: &mut Frame<B>, app: &App) {
                 Style::default().add_modifier(Modifier::DIM),
             ),
             Span::styled(line, {
-                if num == row.line {
+                if num == row.contents[0].line {
                     Style::default().fg(Color::Green)
                 } else {
                     Style::default()
